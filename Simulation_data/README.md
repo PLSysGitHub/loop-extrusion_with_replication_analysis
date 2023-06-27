@@ -1,0 +1,1 @@
+This directory should hold the simulation data to be analysed. The configurations used for data shown in the manuscript can be downloaded from Zotero: .
