@@ -125,7 +125,7 @@ function make_time_course_plots(data_dir,plot_dir, monomer_size, N)
                                 seg_inds=read(file, "seg_index")[10:end]
                                 seg_std=read(file, "seg_index_std")[10:end]
                                 
-                                plot(seg_inds, ribbon=seg_std, ylims=(0,1), xlabel="Replicated length [Mb]", 
+                                plot(seg_inds, ribbon=seg_std, ylims=(0,1), xlabel="Replicated length [Mb]", color=:black, fillalpha=0.2,
                                         ylabel="Segregated fraction", xticks=(1:100:404, string.([0,1, 2, 3, 4])))
                                 png(plot_dir*"Segregated_fractions/"*out_ext)
 

@@ -155,22 +155,22 @@ function plot_compare_av_z(av1, av2, fork, N=404)
 
         L=fork_to_height(fork)
 
-        old=av1[1:N]
-        new=av1[N+1:end]
+        old=av2[1:N]
+        new=av2[N+1:end]
 
         hline([L/2], ribbon=(L, 0), color=:turquoise, fillalpha=0.2)
         hline!([-L/2], color=:turquoise)
         hline!([0], color=:grey, linealpha=0.3)
         plot!(repl_inds,old[repl], ylabel="Long axis position [μm]",xlabel="Genomic position [Mb]", color=1)
-        plot!(unrepl2.-(ter),old[unrepl2], color=:black,label="No loop-extruders")
+        plot!(unrepl2.-(ter),old[unrepl2], color=:black,label="Loop-extruders")
         plot!(unrepl1.-(ter-N+1),old[unrepl1], color=:black)
         plot!(repl_inds,new[repl], color=2, size=[700,400])
 
-        old2=av2[1:N]
-        new2=av2[N+1:end]
+        old2=av1[1:N]
+        new2=av1[N+1:end]
 
         plot!(repl_inds,old2[repl], color=1, linestyle=:dash, ylims=(-3.45/2, 3.45/2))
-        plot!(unrepl2.-(ter),old2[unrepl2], color=:black,label="Loop-extruders", linestyle=:dash)
+        plot!(unrepl2.-(ter),old2[unrepl2], color=:black,label="No loop-extruders", linestyle=:dash)
         plot!(unrepl1.-(ter-N),old2[unrepl1], color=:black,linestyle=:dash)
         plot!(repl_inds,new2[repl], color=2, linestyle=:dash)
 end
@@ -252,11 +252,11 @@ segregated_fractions should be an array of size (2, n) where n is the number of 
 The first row should be the segregated fractions without loop-extruders, the second row with loop-extruders
 """
 function plot_compare_segregated_fractions(Rs, segregated_fractions, segregated_fractions_std)
-        scatter(Rs, segregated_fractions[1,:], ribbon=segregated_fractions_std[1,:], fillalpha=0.2,
+        scatter(Rs, segregated_fractions[2,:], ribbon=segregated_fractions_std[2,:], fillalpha=0.2,
                 ylabel="Segregated fraction", xlabel="Replicated length [Mb]", marker=:circle, markersize=10,size=(800,400),
-                xticks=(100:100:404, string.([1, 2, 3, 4])), label="No loop-extruders", ylims=(0,1), color=:black)
-        scatter!(Rs, segregated_fractions[2,:], ribbon=segregated_fractions_std[2,:], fillalpha=0.4,
-                label="Loop-extruders", color=:grey, marker=:diamond, markersize=10)
+                xticks=(100:100:404, string.([1, 2, 3, 4])), label="Loop-extruders", ylims=(0,1), color=:black)
+        scatter!(Rs, segregated_fractions[1,:], ribbon=segregated_fractions_std[1,:], fillalpha=0.4,
+                label="No loop-extruders", color=:grey, marker=:diamond, markersize=10)
 end
 
 """
@@ -266,9 +266,9 @@ Plot the segregated fractions as a function of R
 segregated_fractions_1 should correspond to data without loop-extruders, segregated_fractions_2 with loop-extruders
 """
 function plot_compare_segregated_fractions(segregated_fractions_1, segregated_fractions_std_1, segregated_fractions_2, segregated_fractions_std_2)
-        plot(10:N, segregated_fractions_1, ribbon=segregated_fractions_std_1, ylims=(0,1), xlabel="Replicated length [Mb]", ylabel="Segregated fraction",
-                xticks=(1:100:404, string.([0, 1, 2, 3, 4])), label="No loop-extruders", color=:black, size=(800,400), fillalpha=0.2)
-        plot!(10:N, segregated_fractions_2, ribbon=segregated_fractions_std_2, label="Loop-extruders", linestyle=:dash, color=:grey, fillalpha=0.4)
+        plot(10:N, segregated_fractions_2, ribbon=segregated_fractions_std_2, ylims=(0,1), xlabel="Replicated length [Mb]", ylabel="Segregated fraction",
+                xticks=(1:100:404, string.([0, 1, 2, 3, 4])), label="Loop-extruders", color=:black, size=(800,400), fillalpha=0.2)
+        plot!(10:N, segregated_fractions_1, ribbon=segregated_fractions_std_1, label="No loop-extruders", linestyle=:dash, color=:grey, fillalpha=0.4)
 end
 
 """
@@ -277,9 +277,9 @@ Given long vectors of the radial separation between the centers of mass of repli
 radial_distances_1 should correspond to data without loop-extruders, radial_distances_2 with loop-extruders
 """
 function plot_compare_radial_distances(radial_distances_1, radial_distances_std_1, radial_distances_2, radial_distances_std_2)
-        plot(radial_distances_1, ribbon=radial_distances_std_1, label="No loop-extruders", ylabel="Radial separation\ncenters of mass [μm]", size=(800,400),
+        plot(radial_distances_2, ribbon=radial_distances_std_2, label="Loop-extruders", ylabel="Radial separation\ncenters of mass [μm]", size=(800,400),
                 xticks=(1:100:404, string.([0, 1, 2, 3, 4])),xlabel="Replicated length [Mb]", color=:black, fillalpha=0.2)
-        plot!(radial_distances_2, ribbon=radial_distances_std_2, label="Loop-extruders", linestyle=:dash, color=:grey, fillalpha=0.4)
+        plot!(radial_distances_1, ribbon=radial_distances_std_1, label="No loop-extruders", linestyle=:dash, color=:grey, fillalpha=0.4)
 end
 
 """
