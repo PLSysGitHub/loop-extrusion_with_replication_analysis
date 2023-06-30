@@ -122,9 +122,9 @@ Switch monomer indices if arm 1 is further from pole 1
 """
 function orient_arms_chromosome!(array,fork,N=404)
     @assert size(array)[2]==2*N
-
+    ter=round(Int,N/2)
     #check if need to relabel arms
-    if mean(array[3,1:fork[1]])>mean(array[3,fork[2]:N])
+    if mean(array[3,1:ter])>mean(array[3,ter:N])
         #arm2 closer to pole 1; reverse the indices
         array[:,1:N].=reverse(array[:,1:N], dims=2)
         array[:,N+1:2*N].=reverse(array[:,N+1:2*N], dims=2)
@@ -142,17 +142,17 @@ function com_turn_chromosome!(array, fork, N=404, ter_distinct=true)
     replicated=vcat(1:fork[1], fork[2]:N)
     replicated_2=replicated.+N
     unreplicated=vcat(floor(Int,N/2):-1:fork[1]+1, fork[2]-1:-1:floor(Int, N/2)+1) #ter to fork1, fork2 to ter
-    com1=mean(array[3,replicated])
-    com2=mean(array[3,replicated_2])
+    ter=round(Int,N/2)
 
     if !ter_distinct && length(unreplicated)==length(replicated)
+        com1=mean(array[3,replicated])
+        com2=mean(array[3,replicated_2])
         com3=mean(array[3,unreplicated])
         coms=[com1,com2,com3]
         order=sortperm(coms)
         sort!(coms)
         if abs(coms[1])<abs(coms[3])
             reverse!(order)
-            array[3,:].*=-1
         end
 
         strand1, strand2, strand3 = [replicated, replicated_2, unreplicated][order]
@@ -162,22 +162,24 @@ function com_turn_chromosome!(array, fork, N=404, ter_distinct=true)
 
     else
         #one strand different length than others
-        #lower com first
-        if abs(com1)<abs(com2)
+        com1=mean(array[3,1:N])
+        com2=mean(array[3,vcat(replicated_2,unreplicated)])        
+        #Strand 1 should have a center of mass closer to mid-cell, ie 0
+        if abs(com1)>abs(com2)
             swapped=copy(array)
             #switch labels old and new
             array[:,replicated].=swapped[:,replicated.+N]
             array[:,replicated.+N].=swapped[:,replicated]
             com1=com2
         end
-
-        if com1>0
-            array[3,:].*=-1
-        end
+    end
+    #Strand 1 should always be near negative pole
+    if mean(array[3,replicated])>0
+        array[3,:].*=-1
     end
 
     #check if need to relabel arms
-    if mean(array[3,1:fork[1]])>mean(array[3,fork[2]:N])
+    if mean(array[3,1:ter])>mean(array[3,ter:N])
         #arm2 closer to pole 1; reverse the indices
         array[:,1:N].=reverse(array[:,1:N], dims=2)
         array[:,N+1:2*N].=reverse(array[:,N+1:2*N], dims=2)
