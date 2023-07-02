@@ -1,1 +1,1 @@
-This directory should hold the simulation data to be analysed. The configurations used for data shown in the manuscript can be downloaded from Zotero: .
+This directory should hold the simulation data to be analysed. The configurations used for data shown in the manuscript can be downloaded from [Zenodo](https://zenodo.org/record/8105232/files/Simulation_data.zip?download=1).

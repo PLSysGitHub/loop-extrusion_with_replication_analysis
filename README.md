@@ -1,6 +1,6 @@
 #  Loop-extruders alter bacterial chromosome topology to direct entropic forces for segregation
 
-This repository contains the analysis code used for the preprint "Loop-extruders alter bacterial chromosome topology to direct entropic forces for segregation".
+This repository contains the analysis code used for the preprint ["Loop-extruders alter bacterial chromosome topology to direct entropic forces for segregation"](https://www.biorxiv.org/content/10.1101/2023.06.30.547230v1).
 
 There are several files in the top directory:
 
