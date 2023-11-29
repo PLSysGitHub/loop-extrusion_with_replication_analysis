@@ -129,6 +129,71 @@ function calc_fast_steady_state_stats(config_dir,out_dir="Stats/Equilibrium_stat
 end
 
 """
+Given a directory with simulation results of unconfined polymers, calculate...
+
+- mean squared distance as function of genomic length
+- convergence of mean squared distance of polymer ends as function of simulation step
+
+averaged over configurations from simulation step sample_from onwards
+"""
+function calc_no_confinement_extensions(config_dir,out_dir="Stats/No_confinement/"; skip_done=true, sample_from=0, linear=true, max_it=2500)
+    for dir in subdirs(config_dir)
+        out_path=replace(dir, config_dir=>out_dir)
+        if !isfile(out_path*"/steady_state_stats_from_$(sample_from).h5") || !skip_done
+            N=parse_after(dir, "_N_")
+
+            println("Calculating extensions for $dir with N=$N")
+
+            #arrays for stats
+            num_samp=0 #total number of samples with high enough block number
+            mean_sq_dist=zeros(N-1)
+            convergence=zeros(max_it)
+            num_blocks=zeros(max_it) #number of samples per block
+
+            for f in readdir(dir, join=true)
+                h5open(f) do file
+                    for i in keys(file)
+                        block_num=read_attribute(file[i], "block")
+
+                        pos=read(file, "$i/pos")[:,1:N]
+
+                        convergence[block_num+1]+=norm(pos[:,1].-pos[:,N]).^2
+                        num_blocks[block_num+1]+=1
+
+                        if block_num>sample_from
+                            block_mean_sq_dist=fetch_mean_squared_dist_array(pos,N,linear)
+                            mean_sq_dist.+=block_mean_sq_dist
+                            num_samp+=1
+                        end
+                    end
+                end
+            end
+
+            if any(num_blocks.>0)
+                #divide by number of samples to get average
+                mean_sq_dist./=num_samp
+                convergence=convergence[1:findlast(!iszero, num_blocks)]
+                num_blocks=num_blocks[1:findlast(!iszero, num_blocks)]
+                convergence./=num_blocks
+
+                #save to file
+                if !ispath(out_path)
+                    mkpath(out_path)
+                end
+                h5open(out_path*"/steady_state_stats_from_$(sample_from).h5", "w") do file
+                    @write file num_samp
+                    @write file num_blocks
+                    @write file mean_sq_dist
+                    @write file convergence
+                end
+            end
+        else
+            println("Found results in $out_path, skipping calculations")
+        end
+    end
+end
+
+"""
 Given a directory of configurations performed at a fixed replication stage, calculate...
 
 - contact probability maps
@@ -234,13 +299,6 @@ as a function of simulation step
 function check_convergence(config_dir="Simulation_data/Steady_state/", out_dir="Stats/Convergence/"; max_it=2500, N=404, spacer=1)
     folders=vcat(subdirs.(subdirs(config_dir))...)
 
-    if !isdir(out_dir*"Steady_state_No_smcs")
-        mkpath(out_dir)
-        for subdir in ["Steady_state_No_smcs", "Steady_state_No_smcs_no_tether", "Steady_state_Nontopological_smcs_no_tether", "Steady_state_Nontopological_smcs", "Steady_state_Topological_smcs_no_tether", "Steady_state_Topological_smcs"]
-            mkpath(out_dir*subdir)
-        end
-    end
-
     for folder in folders
         files=readdir(folder, join=true)
         no_orient=!(contains(folder, "no_tether")) #if tethered, dont relabel oris
@@ -283,6 +341,9 @@ function check_convergence(config_dir="Simulation_data/Steady_state/", out_dir="
         
         #save the data
         out_path=replace(folder, config_dir=>out_dir)
+        if !isdir(dirname(out_path))
+            mkpath(dirname(out_path))
+        end
         writedlm(out_path*"z_over_sims.txt", zs)
         writedlm(out_path*"com_over_sims.txt", coms)
         writedlm(out_path*"seg_ind_over_sims.txt", seg_inds)

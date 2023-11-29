@@ -1,7 +1,7 @@
 """
 This script was used to find the parameters to set the ori separation.
 
-See Supplementary Information, and Fig. S1
+See Supplementary Information
 """
 
 using CurveFit, DelimitedFiles, DSP, StatsBase, Statistics, Plots
@@ -47,15 +47,17 @@ end
 times=[0,10,30,45,60, 75] #min
 ori_separations=[0.0,1.739,2.088,2.399,2.671,3.000] #μm
 
+fig_type=".pdf" #can also save png or other formats
+
 #do fits to data
 L_0=2.3 #μm, from Messelink et.al. 2021
 r_growth=log(2)/126 #min^-1; doubling time 126 min
 v_f, v_0, a=slowing_ori_params(times, ori_separations)
 
 #make plots
-plot(0:0.1:120, t->L_0*exp.(r_growth*t), label="Exponential growth", color=:gray, xlims=(-3,120),ylabel="Cell length [μm]", xlabel="Time [min]")
-png(fig_folder*"growth_rate")
+plot(0:0.1:120, t->L_0*exp.(r_growth*t), label="Exponential growth", color=:gray, size=[700,450],xlims=(-3,120),ylabel="Cell length [μm]", xlabel="Time [min]")
+savefig(fig_folder*"growth_rate"*fig_type)
 
 plot(0:0.1:80, t-> slowing_oris(t,v_f), label="Decelerating fit", color=:gray, xlims=(-3,80), ylabel="Origin separation [μm]",xlabel="Time [min]")
 scatter!(times, ori_separations, color=:black)
-png(fig_folder*"separation_rate")
+savefig(fig_folder*"separation_rate"*fig_type)

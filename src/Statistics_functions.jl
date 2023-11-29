@@ -10,18 +10,18 @@ function fetch_zs(pos, fork, N=405)
     return zs
 end
 
-function fetch_z_COMs(pos, fork, N=405)
+function fetch_z_COMs(pos, fork, N=404)
     zs=pos[3,:]
     #unreplicated; just use coordinate of first
     return mean(zs[replicated(fork,N)]), mean(zs[replicated(fork,N).+N]), mean(zs[unreplicated(fork)])
 end
 
-function fetch_COMs(pos, fork, N=405)
+function fetch_COMs(pos, fork, N=404)
     #unreplicated; just use coordinate of first
     return mean(pos[:,replicated(fork,N)], dims=2), mean(pos[:,replicated(fork,N).+N],dims=2), mean(pos[:,unreplicated(fork)], dims=2)
 end
 
-function fetch_contacts(pos,fork, N=405, contact_r=2)
+function fetch_contacts(pos,fork, N=404, contact_r=2)
     contacts_old=zeros(N,N)
     contacts_new=zeros(N,N)
     contacts_inter=zeros(N,N)
@@ -56,7 +56,7 @@ function fetch_contacts(pos,fork, N=405, contact_r=2)
     return contacts, contacts_old, contacts_new, contacts_inter
 end
 
-function fetch_chipseq(smcs, N=405)
+function fetch_chipseq(smcs, N=404)
     inds=reshape(smcs, :,1)
     inds[inds.>N].-=N
     chipseq=zeros(N)
@@ -81,4 +81,33 @@ function fetch_segregated_fraction(pos, fork, N=404)
     below=length(findall(zs[replicated(fork,N)].<0))
     above=length(findall(zs[replicated(fork,N).+N].>0))
     return abs(above+below-R)/R
+end
+
+function fetch_mean_squared_dist_array(pos,N=404, linear=true)
+    ds=pairwise(Euclidean(), pos, dims=2) #efficient distance matrix calculation
+
+    if linear
+        mean_sq=zeros(N-1)
+        counts=zeros(N-1)
+        for i in 1:N
+            for j in i+1:N
+                s=j-i
+                mean_sq[s]+=ds[j,i]^2
+                counts[s]+=1
+            end
+        end
+        mean_sq./=counts
+    else
+        mean_sq=zeros(floor(Int,N/2))
+        counts=zeros(floor(Int,N/2))
+        for i in 1:N
+            for j in i+1:N
+                s=min(j-i, N-(j-i))
+                mean_sq[s]+=ds[j,i]^2
+                counts[s]+=1
+            end
+        end
+        mean_sq./=counts
+    end
+    return mean_sq
 end

@@ -7,6 +7,8 @@ There are several files in the top directory:
 - Main_dynamic.jl
 - Main_steady_state.jl
 - fork_separation.jl
+- check_time_scales.jl
+- interpolate_parameters.jl
 
 These files can be run to generate statistics and plots for all simulation data found in the directory "Simulation data". The large, raw simulation data used in the paper can be downloaded from Zenodo, but we provide analysed statistics in this repository.
 

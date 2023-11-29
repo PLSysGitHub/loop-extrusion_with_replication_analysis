@@ -2,8 +2,6 @@
 This script was used to compare fork separations from steady state simulations
 to expectation values found by assuming a linear dependence of strand extension 
 on strand length.
-
-Used for Fig.4 E,F
 """
 
 include("src/helpers.jl")
@@ -56,6 +54,8 @@ if !isdir(plot_directory)
     mkpath(plot_directory)
 end
 
+fig_type=".pdf" #can also save png or other formats
+
 #Parameters for cell dimensions
 diameter=6.4*129/1000 #μm
 monomer_size=129/1000 #μm
@@ -96,7 +96,7 @@ plot(0:N, Ls, ribbon=(Ls, zeros(N+1)), color=:turquoise, fillalpha=0.2, size=(40
 plot!(0:N, Ls.+diameter, ribbon=(diameter, 0), color=:lightgrey, fillalpha=0.6);
 scatter!(Rs, seps*monomer_size, ribbon=stds*monomer_size, markersize=5, color=:black, ylabel="Fork long axis separation [μm]");
 plot!(0:N,predicted, color=:black, xlabel="Replicated length [Mb]", xticks=(0:100:400, 0:4))
-png(plot_directory*"fork_separation")
+savefig(plot_directory*"fork_separation"*fig_type)
 
 #Fork heights in the presence of loop-extruders can be predicted similarly
 Rs=[0]
@@ -135,4 +135,4 @@ plot!(0:N, Ls./2 .+diameter/2, ribbon=(diameter/2, 0), color=:lightgrey, fillalp
 plot!(0:N, -Ls./2 .-diameter/2, ribbon=(0,diameter/2), color=:lightgrey, fillalpha=0.6);
 scatter!(Rs, zs*monomer_size, ribbon=zstds*monomer_size, markersize=5, color=:black, ylabel="Fork long axis position [μm]");
 plot!(0:N,predicted, color=:black, xlabel="Replicated length [Mb]", xticks=(0:100:400, 0:4))
-png(plot_directory*"fork_position_smcs")
+savefig(plot_directory*"fork_position_smcs"*fig_type)

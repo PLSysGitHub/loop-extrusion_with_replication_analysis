@@ -4,6 +4,7 @@ replicated length, time, etc.
 
 Loop-extruder simulations save .h5 files that store the following for each time-point i:
 i/pos   ->  coordinates of monomers, array [3, N]
+i/block ->  simulation step
 i/Fork  ->  current coordinates of replication fork, array [2]
 i/SMCs  ->  positions of loop-extruder links, array [2,M] for non-topological, 
             for topological the number of entries depends on the 

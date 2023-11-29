@@ -57,7 +57,7 @@ function calc_time_point_stats(times, N=404,data_parent_dir="Simulation_data/Dyn
                         h5open(filename, "r") do file
                             list_inds=get_indices_at_times(file,times)
                             positions, forks=fetch_pos_fork_at_inds(file, list_inds, no_turn=no_orient, N=N, spacer=spacer, ter_distinct=ter_distinct)
-                            if !contains(subdir, "No_smcs") && !contains(subdir, "nosmcs")
+                            if !contains(subdir, "No_smcs") && !contains(subdir, "nosmcs") && !contains(subdir, "Ideal")
                                 SMCs=fetch_smcs_at_inds(file, list_inds)
                             end
 
@@ -68,7 +68,7 @@ function calc_time_point_stats(times, N=404,data_parent_dir="Simulation_data/Dyn
 
                                 mean_zs[:,i].+=fetch_zs(positions[i], fork, N)
 
-                                if !contains(subdir, "No_smcs") && !contains(subdir, "nosmcs")
+                                if !contains(subdir, "No_smcs") && !contains(subdir, "nosmcs") && !contains(subdir, "Ideal")
                                     mean_chipseq[:,i].+=fetch_chipseq(SMCs[i],N)
                                 end
 
@@ -97,7 +97,7 @@ function calc_time_point_stats(times, N=404,data_parent_dir="Simulation_data/Dyn
                     @write file mean_forks
                     @write file mean_hic
                     @write file av_dist
-                    if !contains(subdir, "No_smcs") && !contains(subdir, "nosmcs")
+                    if !contains(subdir, "No_smcs") && !contains(subdir, "nosmcs") && !contains(subdir, "Ideal")
                         mean_chipseq./=num_samp
                         @write file mean_chipseq
                     end
@@ -112,7 +112,7 @@ end
 Calculate time trajectory stats over replication cycle
 
 """
-function calc_time_course_stats(N=405,data_parent_dir="Simulation_data/Dynamic/",out_parent_dir="Stats/Segregation_dynamic/"; skip_done=true, spacer=1)
+function calc_time_course_stats(N=404,data_parent_dir="Simulation_data/Dynamic/",out_parent_dir="Stats/Segregation_dynamic/"; skip_done=true, spacer=1)
 
     subdirs=readdir(data_parent_dir, join=true)
     subdirs=subdirs[isdir.(subdirs)]
@@ -167,7 +167,7 @@ function calc_time_course_stats(N=405,data_parent_dir="Simulation_data/Dynamic/"
                     h5open(filename, "r") do file
                         #Get all statistics at required times
                         for i in keys(file)
-                            pos,fork=fetch_pos_fork_at_ind(file,i, no_turn=no_orient, ter_distinct=true, spacer=spacer)
+                            pos,fork=fetch_pos_fork_at_ind(file,i, no_turn=no_orient, ter_distinct=true, spacer=spacer, N=N)
                             R=fork[1]+N-fork[2]+1
 
                             num_samp[R]+=1
