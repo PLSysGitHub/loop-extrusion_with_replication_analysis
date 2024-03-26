@@ -107,6 +107,79 @@ function calc_time_point_stats(times, N=404,data_parent_dir="Simulation_data/Dyn
     end
 end
 
+"""
+For comparison to Le et al 2013, calculate the normalized Hi-C maps at the same time-points as they have data for
+"""
+function calc_normalized_hic(times=[0,10,30,45,60,75], N=404,data_parent_dir="Simulation_data/Dynamic/",out_parent_dir="Stats/Dynamic_Hi-C/"; skip_done=true, spacer=1)
+    subdirs=readdir(data_parent_dir, join=true)
+    subdirs=subdirs[isdir.(subdirs)]
+
+    for subdir in subdirs
+        out_dir=replace(subdir, data_parent_dir=>out_parent_dir)
+        if !isdir(out_dir)
+            mkpath(out_dir)
+        end
+
+        simdirs=readdir(subdir, join=true)
+        simdirs=simdirs[isdir.(simdirs)]
+        for dir in simdirs
+            out_file_name=replace(dir, data_parent_dir=>out_parent_dir)*".h5"
+            if skip_done && isfile(out_file_name)
+                println("Found previous results for $dir, skipping...")
+            else
+                println("Calculating statistics for $dir")
+                num_samp=0
+                ter_distinct=true #terminus distinct during dynamic sims
+                no_orient=true #for hi-c comparison, don't orient the two strands
+
+                #Initialize output arrays
+                mean_forks=zeros(2, length(times))
+                mean_hic=zeros(N, N, length(times)) #the 4 is the dimension for all/old/new/inter
+                normalized_hic=zeros(N,N, length(times))
+
+                #Loop over files, each containing a single time trajectory
+                for filename in readdir(dir,join=true)
+                    h5open(filename, "r") do file
+                        list_inds=get_indices_at_times(file,times)
+                        positions, forks=fetch_pos_fork_at_inds(file, list_inds, no_turn=no_orient, N=N, spacer=spacer, ter_distinct=ter_distinct)
+
+                        #Get all statistics at required times
+                        for i in 1:length(times)
+                            fork=forks[i]
+                            mean_forks[:,i].+=fork
+
+                            #fetch_contacts returns all,old,new,inter contacts
+                            contacts=fetch_contacts(positions[i], fork, N)[1]
+                            mean_hic[:,:,i].+=contacts
+                        end
+                    end
+                    num_samp+=1
+                end
+
+                #divide by number of samples to get average
+                for array in [mean_forks, mean_hic]
+                    array ./= num_samp
+                end
+
+                for time_point in 1:length(times)
+                    hic_all=mean_hic[:,:,time_point]
+                    hic_all.+=transpose(hic_all)
+                    hic_all.*=N/sum(hic_all)
+                    normalized_hic[:,:,time_point]=normalized_contact_map(hic_all)
+                end
+
+                #save all the statistics to a .h5 file
+                out_file_name=replace(dir, data_parent_dir=>out_parent_dir)*".h5"
+                h5open(out_file_name, "w") do file
+                    @write file num_samp
+                    @write file mean_forks
+                    @write file mean_hic
+                    @write file normalized_hic
+                end
+            end
+        end
+    end
+end
 
 """
 Calculate time trajectory stats over replication cycle
@@ -203,6 +276,8 @@ function calc_time_course_stats(N=404,data_parent_dir="Simulation_data/Dynamic/"
                             #segregated fractions
                             si_z=fetch_segregated_fraction(pos,fork,N)
 
+                            @assert si_z<=1 && si_z>=0 "Segregated fraction out of bounds: $si_z !"
+
                             seg_index[R]+=si_z
                             seg_index_std[R]+=si_z.^2
                         end
@@ -247,4 +322,24 @@ function calc_time_course_stats(N=404,data_parent_dir="Simulation_data/Dynamic/"
             end
         end
     end
+end
+
+function check_num_samples_dynamic(config_dir="Simulation_data/Dynamic/", out_dir="Stats/")
+    folders=vcat(subdirs.(subdirs(config_dir))...)
+    num_samples=zeros(Int, length(folders))
+    for (index,folder) in enumerate(folders)
+        files=readdir(folder, join=true)
+        #loop over all files and increment arrays
+        for file in files
+            h5open(file) do f
+                for key in keys(f)
+                    i=read_attribute(f[key], "block")+1
+                    if i==1
+                        num_samples[index]+=1
+                    end
+                end
+            end
+        end
+    end
+    writedlm(out_dir*"num_dynamic_simulations.txt", hcat(replace.(folders, config_dir=>""), num_samples))
 end

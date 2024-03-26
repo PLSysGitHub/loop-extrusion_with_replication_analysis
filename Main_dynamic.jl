@@ -39,6 +39,11 @@ make_time_point_plots(times, out_parent_dir, plot_dir,monomer_size,N=N, filetype
 calc_time_course_stats(N, data_parent_dir,out_segr_dir, skip_done=!repeat)
 make_time_course_plots(out_segr_dir,plots_segr_dir, monomer_size, N, filetype=figure_type)
 
+#Compare simulation contact maps to experimental Hi-C data from Le et al. 2013
+times_Le_et_al=[0,10,30,45,60,75] #timepoints at which we have experimental Hi-C data
+calc_normalized_hic(times_Le_et_al, N, data_parent_dir, skip_done=!repeat)
+plot_compare_hic_experiment(times_Le_et_al, "Stats/Dynamic_Hi-C/","Stats/Le_et_al_2013_Hi-c_maps.h5", plot_dir*"Compare_Hi-C_experiment/",N, filetype=figure_type)
+
 # Plots to compare with or without smcs
 
 #list the files you want to compare to each other
@@ -56,9 +61,7 @@ ideal_files=["Ideal/N_404_colRate_0.03_rateFork_0.07440000000000001_stoch_0.05_s
     "Ideal_no_tether_tied_forks/N_404_colRate_0.03_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_0.0_pullF_2.0",
     "Ideal/N_404_colRate_0.03_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_0.0_pullF_2.0",
     "Ideal_no_tether/N_404_colRate_0.03_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_0.0_pullF_2.0",
-    "Ideal_no_tether/N_404_colRate_0.03_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_0.0_pullF_2.0",
-    "Ideal_no_tether/N_404_colRate_0.03_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_0.0_pullF_2.0",
-    "Ideal_no_tether/N_404_colRate_0.03_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_0.0_pullF_2.0"
+    "", "", ""
     ]
 smcs=["Nontopological_smcs/stallFork_0.0_N_404_colRate_0.03_sep_101_parSstrength_4040.0_lifetime_40400_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_1.5_pullF_2.0",
     "Nontopological_smcs_no_tether/stallFork_0.0_N_404_colRate_0.03_sep_101_parSstrength_4040.0_lifetime_40400_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_1.5_pullF_2.0",
@@ -70,7 +73,9 @@ smcs=["Nontopological_smcs/stallFork_0.0_N_404_colRate_0.03_sep_101_parSstrength
     "Nontopological_smcs_no_tether/stallFork_0.0_N_404_colRate_0.3_sep_101_parSstrength_4040.0_lifetime_40400_rateFork_0.07440000000000001_stoch_0.05_sps_2500_trunc_1.5_pullF_2.0"
     ]
 
-labels=["Nontopological_tether/", "Nontopological_no_tether/", "No_smcs_no_tether_tied_forks/","Topological_tether/",  "Topological_no_tether/", "Nontopological_no_tether_3_trunc/", "Nontopological_no_tether_sps_250/", "Nontopological_no_tether_colRate_0.3/"] #names for subdirectories where comparisons saved
+labels=["Nontopological_tether/", "Nontopological_no_tether/", "No_smcs_no_tether_tied_forks/",
+    "Topological_tether/",  "Topological_no_tether/", "Nontopological_no_tether_3_trunc/", 
+    "Nontopological_no_tether_sps_250/", "Nontopological_no_tether_colRate_0.3/"] #names for subdirectories where comparisons saved
 
 for (index, no_smc_file) in enumerate(no_smcs)
     smc_file=smcs[index]
@@ -92,6 +97,9 @@ end
 #Save some animations of trajectories
 include("src/Trajectory_animations.jl")
 for which in 1:50:200 #which simulation file to animate
-    one_animation_per_sim(data_parent_dir,animation_dir; skip_done=!repeat, which=which)
+    one_animation_per_sim(data_parent_dir,animation_dir; skip_done=true, which=which)
 end
 snapshots_per_sim(data_parent_dir, snapshot_dir; which=50)
+
+#Save a file with counts of simulation runs
+check_num_samples_dynamic(data_parent_dir, "Stats/") 

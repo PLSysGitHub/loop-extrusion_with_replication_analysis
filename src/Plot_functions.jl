@@ -97,7 +97,7 @@ Either pass a Hi-C maps for a single chromosome, or a replicated one (set replic
 Plots the Hi-C map with monomer mid at the center of the plot,
 if R is not NaN, draw dashed lines to indicate fork positions
 """
-function plot_hic(M; R=NaN, mid=1, replicated=false)
+function plot_hic(M; R=NaN, mid=1, replicated=false, colorlimit=0.1)
     N=size(M)[1]
     cticks=0:0.02:0.1
 
@@ -106,7 +106,7 @@ function plot_hic(M; R=NaN, mid=1, replicated=false)
     else
         M_shifted=shifted_map(M,mid)
     end
-    pl=heatmap(M_shifted,clims=(0,0.1),color=cgrad(:BuPu), size=(500,450),
+    pl=heatmap(M_shifted,clims=(0,colorlimit),color=cgrad(:BuPu), size=(500,450),
             xlims=(1,N),ylims=(1,N), xlabel="Genomic position [Mb]",
             colorbar_ticks=(cticks,cticks), aspect_ratio=1., 
             ylabel="Genomic position [Mb]", colorbartitle="Contact frequency",
@@ -222,7 +222,7 @@ end
 Given average long axis positions from simulations with and without smcs,
 plot them on the same figure, with an indication of the cell size and fork positions
 """
-function plot_compare_av_z(av1, av2, fork, N=404; lbl1="No loop-extruders", lbl2="Loop-extruders", line1=:dash, line2=:solid)
+function plot_compare_av_z(av1, av2, fork, N=404; lbl1="No loop-extruders", lbl2="Loop-extruders", line1=:dash, line2=:solid, plot_forks=true)
         ter=ceil(Int,N/2)
 
         unrepl1=fork[1]:ter-1
@@ -237,10 +237,13 @@ function plot_compare_av_z(av1, av2, fork, N=404; lbl1="No loop-extruders", lbl2
         old=av2[1:N]
         new=av2[N+1:end]
 
+        #plot the cell height as an outline
         hline([L/2], ribbon=(L, 0), color=:turquoise, fillalpha=0.2)
         hline!([-L/2], color=:turquoise, xticks=xticks_Mb(N))
         hline!([0], color=:grey, linealpha=0.3)
-        plot!(repl_inds,old[repl], ylabel="Long axis position [μm]",xlabel="Genomic position [Mb]", color=1, linestyle=line2)
+
+        #plot means and errors for the first set of simulations
+        plot!(repl_inds,old[repl], ylabel="Mean long axis position [μm]",xlabel="Genomic position [Mb]", color=1, linestyle=line2)
         plot!(unrepl2.-(ter),old[unrepl2], color=:black,label=lbl2, linestyle=line2)
         plot!(unrepl1.-(ter-N+1),old[unrepl1], color=:black, linestyle=line2)
         plot!(repl_inds,new[repl], color=2, size=[700,400], linestyle=line2)
@@ -248,10 +251,67 @@ function plot_compare_av_z(av1, av2, fork, N=404; lbl1="No loop-extruders", lbl2
         old2=av1[1:N]
         new2=av1[N+1:end]
 
+        #plot means and errors for the second set of simulations
         plot!(repl_inds,old2[repl], color=1, linestyle=line1, ylims=(-3.45/2, 3.45/2))
         plot!(unrepl2.-(ter),old2[unrepl2], color=:black,label=lbl1, linestyle=line1)
         plot!(unrepl1.-(ter-N),old2[unrepl1], color=:black,linestyle=line1)
         plot!(repl_inds,new2[repl], color=2, linestyle=line1)
+        if plot_forks
+                xs=[N/2+fork[1], fork[2]-N/2, N/2+fork[1], fork[2]-N/2]
+                ys=[av1[fork[1]], av1[fork[2]], av2[fork[1]+N], av2[fork[2]]]
+
+                scatter!(xs,ys, color=:red, markersize=5, label="Replication fork", markerstrokecolor=:red)
+        end
+end
+
+"""
+Given average long axis positions from simulations with and without smcs,
+plot them on the same figure, with an indication of the cell size and fork positions
+"""
+function plot_compare_av_z_w_error(av1, av2, er1, er2, fork, N=404; lbl1="No loop-extruders", lbl2="Loop-extruders", line1=:dash, line2=:solid, plot_forks=true)
+        ter=ceil(Int,N/2)
+
+        unrepl1=fork[1]:ter-1
+        unrepl2=ter:fork[2]
+
+        repl=vcat(fork[2]:N, 1:fork[1])
+        repl_inds= repl.-(ter)
+        repl_inds[repl_inds.<=0].+=N+1
+
+        L=fork_to_height(fork)
+
+        old=av2[1:N]
+        new=av2[N+1:end]
+        er_old=er2[1:N]
+        er_new=er2[N+1:end]
+
+        #plot the cell height as an outline
+        hline([L/2], ribbon=(L, 0), color=:turquoise, fillalpha=0.2)
+        hline!([-L/2], color=:turquoise, xticks=xticks_Mb(N))
+        hline!([0], color=:grey, linealpha=0.3)
+
+        #plot means and errors for the first set of simulations
+        plot!(repl_inds,old[repl], ribbon=er_old[repl], ylabel="Mean long axis position [μm]",xlabel="Genomic position [Mb]", color=1, linestyle=line2)
+        plot!(unrepl2.-(ter),old[unrepl2], ribbon=er_old[unrepl2],color=:black,label=lbl2, linestyle=line2)
+        plot!(unrepl1.-(ter-N+1),old[unrepl1], ribbon=er_old[unrepl1], color=:black, linestyle=line2)
+        plot!(repl_inds,new[repl], ribbon=er_new[repl], color=2, size=[700,400], linestyle=line2)
+
+        old2=av1[1:N]
+        new2=av1[N+1:end]
+        er_old=er1[1:N]
+        er_new=er1[N+1:end]
+
+        #plot means and errors for the second set of simulations
+        plot!(repl_inds,old2[repl], ribbon=er_old[repl], color=1, linestyle=line1, ylims=(-3.45/2, 3.45/2))
+        plot!(unrepl2.-(ter),old2[unrepl2], ribbon=er_old[unrepl2], color=:black,label=lbl1, linestyle=line1)
+        plot!(unrepl1.-(ter-N),old2[unrepl1],ribbon=er_old[unrepl1], color=:black,linestyle=line1)
+        plot!(repl_inds,new2[repl], ribbon=er_new[repl], color=2, linestyle=line1)
+        if plot_forks
+                xs=[N/2+fork[1], fork[2]-N/2, N/2+fork[1], fork[2]-N/2]
+                ys=[av1[fork[1]], av1[fork[2]], av2[fork[1]+N], av2[fork[2]]]
+
+                scatter!(xs,ys, color=:red, markersize=5, label="Replication fork", markerstrokecolor=:red)
+        end
 end
 
 """
@@ -285,12 +345,11 @@ function plot_av_zs_all(avs, forks, N=405)
                         unrepl2=vcat(ter:N,1:ter)
                         plot!(old[unrepl2], color=:black, label="0 min")
                 else 
-                        plot!(repl_inds,old[repl], ylabel="Long axis position [μm]",xlabel="Genomic position [Mb]", color=1, alpha=α)
+                        plot!(repl_inds,old[repl], ylabel="Mean long axis position [μm]",xlabel="Genomic position [Mb]", color=1, alpha=α)
                         plot!(repl_inds,new[repl], color=2, size=[550,400], alpha=α)
                         plot!(unrepl2.-(ter),old[unrepl2], color=:black, alpha=α, label="$t min")
                         plot!(unrepl1.-(ter-N+1),old[unrepl1], color=:black, alpha=α)
                 end
-
         end
 end
 
@@ -307,7 +366,7 @@ function ori_ter_kymograph(zs, stds)
 
         plot(hs./2, ribbon=(hs, zeros(N+1)), color=:turquoise, fillalpha=0.2)
         plot!(-hs./2, color=:turquoise)
-        plot!(zs[1,:], ribbon=stds[1,:], label="Ori 1", color=1, ylabel="Mean long axis position")
+        plot!(zs[1,:], ribbon=stds[1,:], label="Ori 1", color=1, ylabel="Mean long axis position [μm]")
         plot!(zs[N+1,:], ribbon=stds[N+1,:], label="Ori 2", color=2, xlabel="Replicated length [Mb]")
         plot!(zs[ter,:], ribbon=stds[ter,:], label="Ter", color=:black, alpha=0.8, xticks=xticks_Mb(N, false))
 end
@@ -321,7 +380,7 @@ function com_kymograph(zs, stds)
         hs=map(i->R_to_height(i), 0:N)
 
         plot(hs./2, ribbon=(hs, zeros(N+1)), color=:turquoise, fillalpha=0.2)
-        plot!(zs[1,:], ribbon=stds[1,:], label="Strand 1", color=1, ylabel="Center of mass\nMean long axis position")
+        plot!(zs[1,:], ribbon=stds[1,:], label="Strand 1", color=1, ylabel="Mean center of mass\nlong axis position [μm]")
         plot!(zs[2,:], ribbon=stds[2,:], label="Strand 2", color=2, xlabel="Replicated length [Mb]")
         plot!(zs[3,:], ribbon=stds[3,:], label="Ter strand", color=:black, alpha=0.8, xticks=xticks_Mb(N, false))
         plot!(-hs./2, color=:turquoise)
@@ -341,14 +400,14 @@ function plot_compare_segregated_fractions(Rs, segregated_fractions, segregated_
     
         # First, draw the lines without any markers
         p = plot(Rs_prepend, segregated_fractions_prepend, xticks=xticks_Mb(404, false),
-                 ylabel="Segregated fraction", xlabel="Replicated length [Mb]",
-                 size=(800,400), ylims=(0,1), xlims=(0,415), color=[:grey :black :teal], 
+                 ylabel="Mean segregated fraction", xlabel="Replicated length [Mb]",
+                 size=(800,400), ylims=(0,1), xlims=(0,415), color=[:teal :black :magenta], 
                  fillalpha=[0.2 0.4 0.4])
     
         # Now, add the markers on top but skip the first one
         scatter!(Rs, segregated_fractions, yerror=segregated_fractions_std,
-                 marker=[:circle :square :diamond], markersize=10, color=[:grey :black :teal],
-                 label=[lbl1 lbl2 lbl3], msc=color=[:grey :black :teal])    
+                 marker=[:circle :square :diamond], markersize=10, color=[:teal :black :magenta],
+                 label=[lbl1 lbl2 lbl3], msc=color=[:teal :black :magenta])    
         return p
 end
     
@@ -365,10 +424,10 @@ function plot_compare_segregated_fractions(segregated_fractions, segregated_frac
         if !std_ideal
                 ribbons[:,3].=NaN
         end
-        plot(10:N, segregated_fractions[10:N, :], ribbon=ribbons[10:N,:], ylims=(0,1), 
-                xlabel="Replicated length [Mb]", ylabel="Segregated fraction",
+        plot(1:N, segregated_fractions, ribbon=ribbons, ylims=(0,1), 
+                xlabel="Replicated length [Mb]", ylabel="Mean segregated fraction",
                 xticks=xticks_Mb(N,false), label=[lbl1 lbl2 lbl3],  
-                color=[:grey :black :teal], size=(800,400), fillalpha=[0.4 0.2 0.4])
+                color=[:teal :black :magenta], size=(800,400), fillalpha=[0.4 0.2 0.4])
 end
 
 """
@@ -381,7 +440,18 @@ function plot_convergence_oris(long_axis_positions, R)
 
         hline([L/2], ribbon=(L, 0), color=:turquoise, fillalpha=0.2)
         hline!([-L/2], color=:turquoise)
-        plot!(long_axis_positions[1,:], xlabel="Simulation time", ylabel="Average long axis position [μm]", label="Ori 1", color=1)
+        plot!(long_axis_positions[1,:], xlabel="Simulation time", ylabel="Mean long axis position [μm]", label="Ori 1", color=1)
         plot!(long_axis_positions[N+1,:], label="Ori 2", ylims=(-L_max/2,L_max/2), legend=:outerright, color=2)
         plot!(long_axis_positions[Int(N/2),:], label="Ter", xticks=:auto, color=:black)
+end
+
+"""
+Plot that helps check where SMCs are.
+"""
+function smc_distr(smcs, R, N)
+        scatter(smcs[1,:], smcs[2,:], xlims=(0,2*N), ylims=(0,2*N))
+        vline!([N,2*N], color=:black)
+        hline!([N,2*N], color=:black)
+        vline!([R/2, N+R/2], color=:red, linestyle=:dash)
+        hline!([R/2, N+R/2], color=:red, linestyle=:dash)
 end

@@ -16,9 +16,9 @@ using HDF5
 
 periodic_ind(i,N)= i>1 ? Int((i-1)%N+1) : periodic_ind(i+N,N)
 
-replicated(fork,N) = vcat(fork[2]:N, 1:fork[1])
+replicated(fork,N) = vcat(fork[2]+1:N, 1:fork[1]-1)
 
-unreplicated(fork)=fork[1]+1:fork[2]-1
+unreplicated(fork)=fork[1]:fork[2]
 
 function parse_after(dir_name, what="/R_")
     from=findfirst(what, dir_name)[end]+1
@@ -58,6 +58,9 @@ end
 
 #Shift map so that the middle of the map is at the middle of the matrix
 function shifted_map(M,mid=1)
+    if isnan(mid)
+        return M
+    end
     N=size(M)[1]
     if N%2==0
             first=Int(mid-N/2)
@@ -71,6 +74,9 @@ function shifted_map(M,mid=1)
 end
 
 function shifted_map_replicated(M,mid=1)
+    if isnan(mid)
+        return M
+    end
     N=Int(size(M)[1]/2)
     M_shifted=copy(M)
     for inds in [1:N, N+1:2*N]
@@ -333,4 +339,47 @@ end
 
 function fetch_smcs_at_ind(file, ind; spacer=1)
     return floor.(Int,read(file["$ind/SMCs"])./spacer).+1
+end
+
+"""
+Given a contact map, return the normalized contact map.
+
+Normalization as for Le et al. 2013: each row and column sum up to 1
+"""
+function normalized_contact_map(hi_c_map, num_steps=200)
+    normalized=copy(hi_c_map)
+    N=size(hi_c_map)[1]
+
+    for k in 1:num_steps
+        #one normalisation step
+        total_reads=sum(normalized)
+        totals=zeros(N)
+        for i in 1:N
+            totals[i]=sum(normalized[:,i])
+        end
+        for i in 1:N
+            for j in 1:N
+                normalized[j,i]*=total_reads/(totals[i]*totals[j])/N
+            end
+        end
+    end
+    normalized.*=N/sum(normalized)
+
+    return normalized
+end
+
+"""
+Function that returns matrix with A in lower half
+and B in upper half. For plotting two matrices at once.
+"""
+function half_half(A,B)
+    N=size(A)[1]
+    halves=zeros(N,N)
+    for i in 1:N
+        for j in i+1:N
+            halves[i,j]=A[i,j]
+            halves[j,i]=B[i,j]
+        end
+    end
+    return halves
 end

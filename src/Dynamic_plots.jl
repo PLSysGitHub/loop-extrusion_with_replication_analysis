@@ -203,3 +203,47 @@ function plot_compare_time_point_data(times, file_no_smc, file_smc, plot_dir, mo
         end
 
 end
+
+"""
+Plot comparisons of Hi-C data to experimental data from Le et al. 2013
+"""
+function plot_compare_hic_experiment(times, directory_sims, file_experimental, plot_dir, N; filetype="png")
+        hic_experimental=h5read(file_experimental, "hic_maps")
+        N=size(hic_experimental)[1]
+        if filetype[1]!='.'
+                filetype="."*filetype
+        end
+
+        for subdir in subdirs(directory_sims)
+                files=readdir(subdir, join=true)
+                for f in files
+                        out_dir=replace(f, directory_sims=>plot_dir)
+                        out_dir=replace(out_dir, ".h5"=>"/")
+                        if !isdir(out_dir)
+                                mkpath(out_dir)
+                        end
+                        h5open(f) do file
+                                if !isdir(plot_dir)
+                                        mkpath(plot_dir)
+                                end
+                        
+                                hic_simulations=read(file, "normalized_hic") #this is only the upper triangle of the matrix
+
+                                N=min(N, size(hic_simulations)[1])
+
+                                forks=read(file, "mean_forks")
+                                Rs=map(x->x[1]+N-x[2], zip(forks[1,:], forks[2,:]))
+                                                
+                                for (index, t) in enumerate(times)
+                                        exp_map=shifted_map(hic_experimental[1:N,1:N,index])
+                                        sim_map=shifted_map(hic_simulations[1:N,1:N,index])
+
+                                        compare_hic=half_half(sim_map, exp_map)
+
+                                        plot_hic(compare_hic, R=Rs[index], mid=NaN, colorlimit=0.01)
+                                        savefig(out_dir*"compare_experiment_hic_t_$t"*filetype)
+                                end
+                        end
+                end
+        end
+end
