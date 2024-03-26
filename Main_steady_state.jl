@@ -25,11 +25,12 @@ convergence_plot_dir="Plots/Steady_state_convergence/" #plots to check for conve
 
 #first do mean z-positions, segregated fractions
 calc_fast_steady_state_stats(config_dir,out_dir, skip_done=!repeat, sample_from=sample_from)
+calc_steady_state_chipseq(config_dir, out_dir, skip_done=!repeat, sample_from=sample_from)
 
 #Hi-C and distance maps are slow to calculate; comment if not needed 
 calc_slow_steady_state_stats(config_dir, out_dir, skip_done=!repeat, sample_from=sample_from)
-make_slow_eq_plots(out_dir, plot_dir, monomer_size, filetype=figure_type)
-
+make_slow_eq_plots(out_dir, plot_dir, monomer_size, filetype=figure_type, skip_done=!repeat)
+make_chipseq_plots(out_dir, plot_dir*"Chipseq/", filetype=figure_type)
 #Compare steady state data from simulations with or without SMCs; make plots
 
 no_smcs=["Steady_state_No_smcs_no_tether/","Steady_state_No_smcs/", "Steady_state_No_smcs_no_tether/"]
@@ -54,3 +55,6 @@ end
 
 check_convergence(config_dir,convergence_dir)
 make_convergence_plots(convergence_dir,convergence_plot_dir, monomer_size, filetype=figure_type)
+
+#Save a file with the number of simulations for each condition
+check_num_samples_steady_state(config_dir, convergence_dir, sample_from)

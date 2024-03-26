@@ -3,7 +3,7 @@ include("Plot_functions.jl")
 """
 Plot Hi-C maps and distance maps for steady state simulations
 """
-function make_slow_eq_plots(data_dir,plot_dir, monomer_size; N=404, filetype="png")
+function make_slow_eq_plots(data_dir,plot_dir, monomer_size; N=404, filetype="png", skip_done=true)
     for subf in ["Hi_C/all", "Hi_C/strand_1", "Hi_C/strand_2", "Hi_C/trans", "Distance_matrix", "Distance_trans"]
         if !isdir(plot_dir*subf)
             mkpath(plot_dir*subf)
@@ -24,6 +24,11 @@ function make_slow_eq_plots(data_dir,plot_dir, monomer_size; N=404, filetype="pn
             out_ext=replace(filename, data_dir=>"")
             out_ext=replace(out_ext, "/"=>"_")
             out_ext=replace(out_ext, ".h5"=>"")
+
+            if isfile(plot_dir*"Distance_trans/"*out_ext*filetype) && skip_done
+                println("Found plot $filename, skipping...")
+                continue
+            end
 
             h5open(filename, "r") do file
                 R=parse_after(filename)
@@ -97,7 +102,7 @@ function make_convergence_plots(data_dir, plot_dir, monomer_size; N=404, spacer=
                 plot_convergence_oris(zs[:,1:last_index],R)
                 savefig(replace(replace(f, dir=>out_plot), ".txt"=>"_ori_positions")*filetype)
 
-                plot(seg_inds[1:last_index], xlabel="Simulation time", ylabel="Segregated fraction", ylims=(0,1), xticks=:auto, color=:black)
+                plot(seg_inds[1:last_index], xlabel="Simulation time", ylabel="Mean segregated fraction", ylims=(0,1), xticks=:auto, color=:black)
                 savefig(replace(replace(f, dir=>out_plot), ".txt"=>"_segregated_fractions")*filetype)
             end
         end
@@ -108,7 +113,8 @@ end
 Compare steady state data for simulations with and without SMCs, at given values of the replicated length R.
 """
 function compare_point_data(Rs::Vector{Int}, dir_no_smc::String, dir_smc::String, dir_ideal::String, plot_dir::String, 
-        monomer_size::Number, N::Int; filetype="png", lbl1="No loop-extruders", lbl2="Loop-extruders", lbl3="Ideal chain", line1=:dash, line2=:solid)
+        monomer_size::Number, N::Int; filetype="png", lbl1="No loop-extruders", lbl2="Loop-extruders", lbl3="Ideal chain", 
+        line1=:dash, line2=:solid, parSval=4040.0, P_U=0.0)
     if !isdir(plot_dir)
             mkpath(plot_dir)
     end
@@ -122,6 +128,14 @@ function compare_point_data(Rs::Vector{Int}, dir_no_smc::String, dir_smc::String
 
     files_smc=readdir(dir_smc, join=true)
     files_smc=files_smc[isdir.(files_smc)].*"/steady_state_stats.h5"
+
+    #Added new data with different loading rates and P_U; make sure loading the right ones
+    if contains(files_smc[1], "parSstrength_")
+        files_smc=filter(x->contains(x, "parSstrength_$(parSval)_"), files_smc)
+    end
+    if contains(files_smc[1], "stallFork")
+        files_smc=filter(x->contains(x, "stallFork_$(P_U)_"), files_smc)
+    end
 
     files_ideal=readdir(dir_ideal, join=true)
     files_ideal=files_ideal[isdir.(files_ideal)].*"/steady_state_stats.h5"
@@ -143,18 +157,25 @@ function compare_point_data(Rs::Vector{Int}, dir_no_smc::String, dir_smc::String
 
         h5open(file_no_smc) do f1
                 zs_no_smc=read(f1, "mean_zs")*monomer_size
+                num_samp_no_smc=read(f1, "num_samp")
+                zs_no_smc_error=read(f1, "zs_std")*monomer_size/sqrt(num_samp_no_smc)
 
                 segregated_fractions[index,1]=read(f1, "seg_index")
                 segregated_fractions_std[index,1]=read(f1, "seg_index_std")
 
                 h5open(file_smc) do f2
                     zs_smc=read(f2, "mean_zs")*monomer_size
+                    num_samp_smc=read(f2, "num_samp")
+                    zs_smc_error=read(f2, "zs_std")*monomer_size/sqrt(num_samp_smc)
 
                     segregated_fractions[index,2]=read(f2, "seg_index")
                     segregated_fractions_std[index,2]=read(f2, "seg_index_std")
 
                     plot_compare_av_z(zs_no_smc, zs_smc, fork, lbl1=lbl1, lbl2=lbl2, line1=line1, line2=line2)
                     savefig(plot_dir*"compare_average_long_axis_positions_R_$R"*filetype)
+
+                    plot_compare_av_z_w_error(zs_no_smc, zs_smc,zs_no_smc_error, zs_smc_error, fork, lbl1=lbl1, lbl2=lbl2, line1=line1, line2=line2, plot_forks=false)
+                    savefig(plot_dir*"with_error_compare_average_long_axis_positions_R_$R"*filetype)
                 end
         end
 
@@ -171,4 +192,43 @@ function compare_point_data(Rs::Vector{Int}, dir_no_smc::String, dir_smc::String
 
     plot_compare_segregated_fractions(Rs, segregated_fractions, segregated_fractions_std, lbl1=lbl1, lbl2=lbl2, lbl3=lbl3)
     savefig(plot_dir*"compare_segregated_fractions"*filetype)
+end
+
+"""
+Read the chipseq profiles and make plots
+"""
+function make_chipseq_plots(data_dir, plot_dir;N=404, filetype="png")
+    if filetype[1]!='.'
+        filetype="."*filetype
+    end
+    for dir in subdirs(data_dir)
+        if contains(dir, "No_smcs") || contains(dir, "Ideal")
+            continue
+        end
+        if !isdir(replace(dir, data_dir=>plot_dir))
+            mkpath(replace(dir, data_dir=>plot_dir))
+        end
+        for subdir in subdirs(dir)
+            filename=subdir*"/steady_state_chipseq.h5"
+            out_plot=replace(subdir, data_dir=>plot_dir)
+            h5open(filename, "r") do file
+                R=parse_after(filename)
+                chipseq=read(file, "mean_chipseq")
+                forks=read(file, "fork")
+
+                plot(chipseq, xlabel="Genomic position [Mb]", ylabel="Mean number loop-extruders", 
+                    color=:black, ylims=(0,1.1), size=[500,350], xticks=(0:200:400,0:2:4))
+                vline!(forks, color=:red, linestyle=:dash)
+
+                savefig(out_plot*"chipseq_profile"*filetype)
+
+                smc_positions=read(file, "mean_smc_positions")
+                heatmap(smc_positions, xlabel="Genomic position [Mb]", ylabel="Genomic position [Mb]", 
+                    color=:viridis, size=[500,350], xticks=(0:200:800), yticks=(0:200:800), clims=(0,0.002))
+                vline!(forks, color=:red, linestyle=:dash)
+                hline!(forks, color=:red, linestyle=:dash)
+                savefig(out_plot*"smc_positions_heatmap"*filetype)
+            end
+        end
+    end
 end

@@ -287,6 +287,73 @@ function calc_slow_steady_state_stats(config_dir,out_dir="Stats/Equilibrium_stat
     end
 end
 
+
+function calc_steady_state_chipseq(config_dir, out_dir; skip_done, sample_from=0)
+    for subdir in subdirs(config_dir)
+        for dir in subdirs(subdir)
+            if contains(dir, "No_smcs") || contains(dir, "Ideal")
+                continue
+            end
+            out_path=replace(dir, config_dir=>out_dir)
+            if !isfile(out_path*"/steady_state_chipseq.h5") || !skip_done
+                println("Calculating chip-seq for $dir")
+
+                #chipseq data doesn't care about orientation in 3D 
+                no_orient=true #if tethered, dont relabel oris
+                ter_distinct=true #if smcs, ter distinct from ori distinct even if R=N/2
+                
+                #read extent of replication from directory name
+                R=parse_after(dir)
+                N=parse_after(dir, "_N_")
+                spacer=round(Int,N/405)
+                N=round(Int, N/spacer)
+
+                println("Calculating chip-seq maps for dir $dir with R=$R")
+                fork=round.(Int,[R/spacer/2,N-R/spacer/2])
+
+                #arrays for stats
+                num_samp=0
+                mean_chipseq=zeros(N) #the 4 is the dimension for all/old/new/inter
+                mean_smc_positions=zeros(2*N, 2*N)
+                for f in readdir(dir, join=true)
+                    h5open(f) do file
+                        for i in keys(file)
+                            if read_attribute(file[i], "block")>sample_from
+                                smcs=read(file, "$i/SMCs")
+
+                                add_smc_contacts!(mean_smc_positions,smcs, N)
+
+                                mean_chipseq.+=fetch_chipseq(smcs, N)
+
+                                num_samp+=1
+                            end
+                        end
+                    end
+                end
+
+                if num_samp>0
+                    #divide by number of samples to get average
+                    mean_chipseq ./= num_samp
+                    mean_smc_positions ./= num_samp
+
+                    #save to file
+                    if !ispath(out_path)
+                        mkpath(out_path)
+                    end
+                    h5open(out_path*"/steady_state_chipseq.h5", "w") do file
+                        @write file num_samp
+                        @write file fork
+                        @write file mean_chipseq
+                        @write file mean_smc_positions
+                    end
+                end
+            else  
+                println("Found results in $out_path, skipping calculations")
+            end
+        end
+    end
+end
+
 """
 Given a directory of configurations performed at a fixed replication stage, calculate...
 
@@ -348,4 +415,24 @@ function check_convergence(config_dir="Simulation_data/Steady_state/", out_dir="
         writedlm(out_path*"com_over_sims.txt", coms)
         writedlm(out_path*"seg_ind_over_sims.txt", seg_inds)
     end
+end
+
+function check_num_samples_steady_state(config_dir="Simulation_data/Steady_state", out_dir="Stats/", sample_from=200)
+    folders=vcat(subdirs.(subdirs(config_dir))...)
+    num_samples=zeros(Int, length(folders))
+    for (index,folder) in enumerate(folders)
+        files=readdir(folder, join=true)
+        #loop over all files and increment arrays
+        for file in files
+            h5open(file) do f
+                for key in keys(f)
+                    i=read_attribute(f[key], "block")+1
+                    if i==sample_from+1
+                        num_samples[index]+=1
+                    end
+                end
+            end
+        end
+    end
+    writedlm(out_dir*"num_steady_state_simulations.txt", hcat(replace.(folders, config_dir=>""), num_samples))
 end

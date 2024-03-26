@@ -57,11 +57,19 @@ function fetch_contacts(pos,fork, N=404, contact_r=2)
 end
 
 function fetch_chipseq(smcs, N=404)
-    inds=reshape(smcs, :,1)
-    inds[inds.>N].-=N
+    inds=vec(smcs).%N
+    inds.+=1 #python has indexing from 0
     chipseq=zeros(N)
     chipseq[inds].+=1
     return chipseq
+end
+
+function add_smc_contacts!(contact_matrix,smcs, N=404)
+    inds=smcs.+1
+    num_smcs=size(inds,2)
+    for i in 1:num_smcs
+        contact_matrix[inds[:,i]...]+=1
+    end
 end
 
 function fetch_distance_matrix(pos, fork, N=404)
@@ -76,11 +84,27 @@ function fetch_distance_matrix(pos, fork, N=404)
 end
 
 function fetch_segregated_fraction(pos, fork, N=404)
-    R=fork[1]+N-fork[2]
+    repl=replicated(fork,N)
+    R=length(repl)
+    if R==0
+        return 0
+    end
     zs=pos[3,:]
-    below=length(findall(zs[replicated(fork,N)].<0))
-    above=length(findall(zs[replicated(fork,N).+N].>0))
+    below=length(findall(zs[repl].<0))
+    above=length(findall(zs[repl.+N].>0))
     return abs(above+below-R)/R
+end
+
+function fetch_segregated_fraction_no_abs(pos, fork, N=404)
+    repl=replicated(fork,N)
+    R=length(repl)
+    if R==0
+        return 0
+    end
+    zs=pos[3,:]
+    below=length(findall(zs[repl].<0))
+    above=length(findall(zs[repl.+N].>0))
+    return (above+below-R)/R
 end
 
 function fetch_mean_squared_dist_array(pos,N=404, linear=true)
