@@ -28,7 +28,7 @@ labels=[] #gather the labels for each simulation
 #Make histograms of the diffusion constants and exponents
 for subdir in subdirs("Simulation_data/Initial_stages/Initial_Nontopological_smcs_no_tether/")
     initial_stage_files=readdir(subdir, join=true)
-    plot_directory=replace(subdir,"Simulation_data/Initial_stages/"=>"Plots/Diffusion/")*"/"
+    plot_directory=replace(subdir,"Simulation_data/Initial_stages/"=>"Plots/Diffusion_and_excluded_volume/")*"/"
     if !isdir(plot_directory)
         mkpath(plot_directory)
         
